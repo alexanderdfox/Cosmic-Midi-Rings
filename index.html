@@ -1,322 +1,269 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-	<title>Cosmic MIDI Rings</title>
-	<style>
-		:root {
-			--neon-blue: #00f2ff;
-			--neon-pink: #ff00ea;
-			--glass: rgba(255, 255, 255, 0.1);
-		}
-		body {
-			margin: 0;
-			background: radial-gradient(circle at center, #1a1a2e 0%, #020205 100%);
-			color: white;
-			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-			overflow: hidden;
-			touch-action: none;
-		}
-		#ui {
-			position: absolute;
-			top: 20px;
-			left: 20px;
-			z-index: 10;
-			background: var(--glass);
-			backdrop-filter: blur(12px);
-			padding: 20px;
-			border-radius: 15px;
-			border: 1px solid rgba(255,255,255,0.1);
-			box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-			display: flex;
-			flex-direction: column;
-			gap: 10px;
-			max-width: 250px;
-		}
-		.control-group { display: flex; flex-direction: column; gap: 5px; }
-		label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #aaa; }
-		select, button {
-			background: #222;
-			color: white;
-			border: 1px solid #444;
-			padding: 8px;
-			border-radius: 5px;
-			outline: none;
-			cursor: pointer;
-		}
-		button:hover { background: #333; border-color: var(--neon-blue); }
-		button.active { background: var(--neon-pink); color: white; border-color: white; }
-		canvas { display: block; }
-		.instructions {
-			position: absolute;
-			bottom: 20px;
-			right: 20px;
-			color: rgba(255,255,255,0.3);
-			font-size: 0.7rem;
-			pointer-events: none;
-		}
-	</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cosmic MIDI Rings</title>
+<style>
+:root {
+  --neon-blue: #00f2ff;
+  --neon-pink: #ff00ea;
+  --glass: rgba(255, 255, 255, 0.1);
+}
+body {
+  margin: 0;
+  background: radial-gradient(circle at center, #1a1a2e 0%, #020205 100%);
+  color: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  touch-action: none;
+}
+#ui {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  padding: 20px;
+  border-radius: 15px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 250px;
+}
+.control-group { display: flex; flex-direction: column; gap: 5px; }
+label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #aaa; }
+select, button {
+  background: #222;
+  color: white;
+  border: 1px solid #444;
+  padding: 8px;
+  border-radius: 5px;
+  outline: none;
+  cursor: pointer;
+}
+button:hover { background: #333; border-color: var(--neon-blue); }
+button.active { background: var(--neon-pink); color: white; border-color: white; }
+canvas { display: block; }
+.instructions {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  color: rgba(255,255,255,0.3);
+  font-size: 0.7rem;
+  pointer-events: none;
+}
+</style>
 </head>
 <body>
 
 <div id="ui">
-	<div class="control-group">
-		<label>Output</label>
-		<select id="midiOut"><option>No MIDI Detected</option></select>
-	</div>
-	<div class="control-group">
-		<label>Instrument</label>
-		<select id="programSelect"></select>
-	</div>
-	<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-		<div class="control-group">
-			<label>Channel</label>
-			<select id="channelSelect"></select>
-		</div>
-		<div class="control-group">
-			<label>Audio</label>
-			<button id="toggleAudio">Audio OFF</button>
-		</div>
-	</div>
-	<button id="toggleSpin">Toggle Rotation</button>
+  <div class="control-group">
+    <label>Output</label>
+    <select id="midiOut"><option>No MIDI Detected</option></select>
+  </div>
+  <div class="control-group">
+    <label>Instrument</label>
+    <select id="programSelect"></select>
+  </div>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+    <div class="control-group">
+      <label>Channel</label>
+      <select id="channelSelect"></select>
+    </div>
+    <div class="control-group">
+      <label>MIDI</label>
+      <button id="toggleMIDI">MIDI OFF</button>
+    </div>
+  </div>
+  <div class="control-group">
+    <button id="toggleAudio">Audio OFF</button>
+  </div>
+  <button id="toggleSpin">Toggle Rotation</button>
 </div>
 
 <div class="instructions">DRAG OR TAP RINGS • SUPPORTS MULTI-TOUCH</div>
 <canvas id="canvas"></canvas>
 
 <script>
-/** * CONFIGURATION & STATE
- */
+/** CONFIG & STATE **/
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 let width, height, cx, cy;
-let spin = true;
-let spinAngle = 0;
-let audioEnabled = false;
-let activeTouches = new Map(); // Track multiple fingers/mouse
+let spin = true, spinAngle = 0;
+let audioEnabled = false, midiEnabled = false;
+let activeTouches = new Map();
 
-// Ring Setup: Outer to Inner
 const ringConfig = [
-	{ radius: 320, thickness: 60, notes: 24, startNote: 60, color: '#00f2ff' }, // Lead
-	{ radius: 255, thickness: 60, notes: 24, startNote: 48, color: '#7000ff' }, // Mid
-	{ radius: 190, thickness: 60, notes: 12, startNote: 36, color: '#ff00ea' }  // Bass
+  { radius: 320, thickness: 60, notes: 24, startNote: 60, color: '#00f2ff' },
+  { radius: 255, thickness: 60, notes: 24, startNote: 48, color: '#7000ff' },
+  { radius: 190, thickness: 60, notes: 12, startNote: 36, color: '#ff00ea' }
 ];
 
 let rings = [];
 
 function initRings() {
-	rings = ringConfig.map(config => {
-		let keys = [];
-		for (let i = 0; i < config.notes; i++) {
-			keys.push({ 
-				index: i, 
-				active: false, 
-				note: config.startNote + i,
-				velocity: 0
-			});
-		}
-		return { ...config, keys };
-	});
+  rings = ringConfig.map(config => {
+    let keys = [];
+    for (let i=0;i<config.notes;i++){
+      keys.push({index:i,active:false,note:config.startNote+i,velocity:0});
+    }
+    return {...config, keys};
+  });
 }
 
-/**
- * MIDI & AUDIO LOGIC
- */
+/** MIDI & AUDIO **/
 let midiAccess = null, midiOut = null, channel = 0;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 async function setupMIDI() {
-	try {
-		midiAccess = await navigator.requestMIDIAccess();
-		const outputs = Array.from(midiAccess.outputs.values());
-		const select = document.getElementById("midiOut");
-		select.innerHTML = "";
-		outputs.forEach(out => {
-			const opt = document.createElement("option");
-			opt.value = out.id; opt.textContent = out.name;
-			select.appendChild(opt);
-		});
-		midiOut = outputs[0] || null;
-		select.onchange = () => midiOut = midiAccess.outputs.get(select.value);
-	} catch (e) { console.log("MIDI blocked"); }
+  try {
+    midiAccess = await navigator.requestMIDIAccess();
+    const outputs = Array.from(midiAccess.outputs.values());
+    const select = document.getElementById("midiOut");
+    select.innerHTML = "";
+    outputs.forEach(out=>{
+      const opt = document.createElement("option");
+      opt.value = out.id; opt.textContent = out.name;
+      select.appendChild(opt);
+    });
+    midiOut = outputs[0] || null;
+    select.onchange = ()=> midiOut = midiAccess.outputs.get(select.value);
+  } catch(e){ console.log("MIDI blocked",e); }
 }
 
-function playNote(note, type = 'on') {
-	if (midiOut) {
-		const msg = type === 'on' ? 0x90 : 0x80;
-		midiOut.send([msg + channel, note, type === 'on' ? 90 : 0]);
-	}
-	if (audioEnabled && type === 'on') {
-		const osc = audioCtx.createOscillator();
-		const gain = audioCtx.createGain();
-		osc.type = "triangle";
-		osc.frequency.value = 440 * Math.pow(2, (note - 69) / 12);
-		gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-		gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-		osc.connect(gain);
-		gain.connect(audioCtx.destination);
-		osc.start();
-		osc.stop(audioCtx.currentTime + 0.4);
-	}
+function playNote(note,type='on') {
+  if (midiEnabled && midiOut) {
+    const msg = type==='on'?0x90:0x80;
+    midiOut.send([msg+channel,note,type==='on'?90:0]);
+  }
+  if(audioEnabled && type==='on'){
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type="triangle";
+    osc.frequency.value = 440*Math.pow(2,(note-69)/12);
+    gain.gain.setValueAtTime(0.2,audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime+0.4);
+  }
 }
 
-/**
- * INTERACTION LOGIC
- */
-function getTargetKey(x, y) {
-	const dx = x - cx;
-	const dy = y - cy;
-	const dist = Math.sqrt(dx * dx + dy * dy);
-	let angle = Math.atan2(dy, dx) - spinAngle;
-	
-	// Normalize angle to 0 - 2PI
-	while (angle < 0) angle += Math.PI * 2;
-	angle = angle % (Math.PI * 2);
-
-	for (const ring of rings) {
-		if (dist < ring.radius && dist > ring.radius - ring.thickness) {
-			const step = (Math.PI * 2) / ring.notes;
-			const idx = Math.floor(angle / step) % ring.notes;
-			return { ring, key: ring.keys[idx] };
-		}
-	}
-	return null;
+/** INTERACTION **/
+function getTargetKey(x,y){
+  const dx = x-cx, dy=y-cy;
+  const dist = Math.sqrt(dx*dx+dy*dy);
+  let angle = Math.atan2(dy,dx)-spinAngle;
+  while(angle<0) angle+=Math.PI*2;
+  angle%=Math.PI*2;
+  for(const ring of rings){
+    if(dist<ring.radius && dist>ring.radius-ring.thickness){
+      const step = (Math.PI*2)/ring.notes;
+      const idx = Math.floor(angle/step)%ring.notes;
+      return {ring,key:ring.keys[idx]};
+    }
+  }
+  return null;
 }
 
-function handleInteraction(id, x, y, isDown) {
-	const target = getTargetKey(x, y);
-	const lastTarget = activeTouches.get(id);
-
-	if (isDown) {
-		if (target) {
-			if (!lastTarget || lastTarget.key !== target.key) {
-				if (lastTarget) {
-					lastTarget.key.active = false;
-					playNote(lastTarget.key.note, 'off');
-				}
-				target.key.active = true;
-				target.key.velocity = 1.0;
-				playNote(target.note || target.key.note, 'on');
-				activeTouches.set(id, target);
-			}
-		} else if (lastTarget) {
-			lastTarget.key.active = false;
-			playNote(lastTarget.key.note, 'off');
-			activeTouches.delete(id);
-		}
-	} else {
-		if (lastTarget) {
-			lastTarget.key.active = false;
-			playNote(lastTarget.key.note, 'off');
-		}
-		activeTouches.delete(id);
-	}
+function handleInteraction(id,x,y,isDown){
+  const target = getTargetKey(x,y);
+  const lastTarget = activeTouches.get(id);
+  if(isDown){
+    if(target){
+      if(!lastTarget || lastTarget.key!==target.key){
+        if(lastTarget){ lastTarget.key.active=false; playNote(lastTarget.key.note,'off'); }
+        target.key.active=true; target.key.velocity=1.0;
+        playNote(target.key.note,'on');
+        activeTouches.set(id,target);
+      }
+    } else if(lastTarget){
+      lastTarget.key.active=false; playNote(lastTarget.key.note,'off');
+      activeTouches.delete(id);
+    }
+  } else {
+    if(lastTarget){ lastTarget.key.active=false; playNote(lastTarget.key.note,'off'); }
+    activeTouches.delete(id);
+  }
 }
 
-// Event Listeners
-canvas.addEventListener('mousedown', e => handleInteraction('mouse', e.clientX, e.clientY, true));
-window.addEventListener('mousemove', e => { if(e.buttons) handleInteraction('mouse', e.clientX, e.clientY, true) });
-window.addEventListener('mouseup', () => handleInteraction('mouse', 0, 0, false));
+// Mouse & Touch Events
+canvas.addEventListener('mousedown',e=>handleInteraction('mouse',e.clientX,e.clientY,true));
+window.addEventListener('mousemove',e=>{if(e.buttons)handleInteraction('mouse',e.clientX,e.clientY,true)});
+window.addEventListener('mouseup',()=>handleInteraction('mouse',0,0,false));
 
-canvas.addEventListener('touchstart', e => {
-	e.preventDefault();
-	for (let t of e.changedTouches) handleInteraction(t.identifier, t.clientX, t.clientY, true);
-}, {passive: false});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();for(let t of e.changedTouches)handleInteraction(t.identifier,t.clientX,t.clientY,true);},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();for(let t of e.changedTouches)handleInteraction(t.identifier,t.clientX,t.clientY,true);},{passive:false});
+canvas.addEventListener('touchend',e=>{for(let t of e.changedTouches)handleInteraction(t.identifier,t.clientX,t.clientY,false);});
 
-canvas.addEventListener('touchmove', e => {
-	e.preventDefault();
-	for (let t of e.changedTouches) handleInteraction(t.identifier, t.clientX, t.clientY, true);
-}, {passive: false});
+/** RENDER **/
+function draw(){
+  ctx.fillStyle='rgba(2,2,5,0.15)';
+  ctx.fillRect(0,0,width,height);
+  if(spin) spinAngle+=0.005;
+  rings.forEach(ring=>{
+    const step = (Math.PI*2)/ring.notes;
+    ring.keys.forEach((key,i)=>{
+      const startA = i*step+spinAngle;
+      const endA = (i+1)*step+spinAngle;
+      ctx.beginPath();
+      ctx.arc(cx,cy,ring.radius,startA,endA);
+      ctx.arc(cx,cy,ring.radius-ring.thickness,endA,startA,true);
+      ctx.closePath();
+      if(key.active){ ctx.fillStyle=ring.color; ctx.shadowBlur=15; ctx.shadowColor=ring.color; }
+      else{ ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.shadowBlur=0; }
+      ctx.fill(); ctx.stroke();
+      if(key.velocity>0) key.velocity*=0.9;
+    });
+  });
+  requestAnimationFrame(draw);
+}
 
-canvas.addEventListener('touchend', e => {
-	for (let t of e.changedTouches) handleInteraction(t.identifier, t.clientX, t.clientY, false);
+function resize(){ width=canvas.width=window.innerWidth; height=canvas.height=window.innerHeight; cx=width/2; cy=height/2; }
+
+/** UI **/
+const programs = ["Acoustic Piano","Electric Piano","Church Organ","Nylon Guitar","Synth Brass","Square Lead","Polysynth","Rain"];
+programs.forEach((p,i)=>{
+  const opt = document.createElement("option");
+  opt.value=i*8; opt.textContent=p;
+  document.getElementById("programSelect").appendChild(opt);
 });
 
-/**
- * RENDERING
- */
-function draw() {
-	ctx.fillStyle = 'rgba(2, 2, 5, 0.15)'; // Trail effect
-	ctx.fillRect(0, 0, width, height);
-	
-	if (spin) spinAngle += 0.005;
+document.getElementById("toggleSpin").onclick=(e)=>{ spin=!spin; e.target.classList.toggle('active',!spin); };
 
-	rings.forEach(ring => {
-		const step = (Math.PI * 2) / ring.notes;
-		
-		ring.keys.forEach((key, i) => {
-			const startA = i * step + spinAngle;
-			const endA = (i + 1) * step + spinAngle;
-			
-			ctx.beginPath();
-			ctx.arc(cx, cy, ring.radius, startA, endA);
-			ctx.arc(cx, cy, ring.radius - ring.thickness, endA, startA, true);
-			ctx.closePath();
-
-			// Key Styling
-			if (key.active) {
-				ctx.fillStyle = ring.color;
-				ctx.shadowBlur = 15;
-				ctx.shadowColor = ring.color;
-			} else {
-				ctx.fillStyle = 'rgba(255,255,255,0.05)';
-				ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-				ctx.shadowBlur = 0;
-			}
-			
-			ctx.fill();
-			ctx.stroke();
-
-			// Decay visual velocity for glow effects
-			if (key.velocity > 0) key.velocity *= 0.9;
-		});
-	});
-
-	requestAnimationFrame(draw);
-}
-
-function resize() {
-	width = canvas.width = window.innerWidth;
-	height = canvas.height = window.innerHeight;
-	cx = width / 2;
-	cy = height / 2;
-}
-
-/**
- * UI INITIALIZATION
- */
-const programs = ["Acoustic Piano", "Electric Piano", "Church Organ", "Nylon Guitar", "Synth Brass", "Square Lead", "Polysynth", "Rain"];
-programs.forEach((p, i) => {
-	const opt = document.createElement("option");
-	opt.value = i * 8; // Generic program spread
-	opt.textContent = p;
-	document.getElementById("programSelect").appendChild(opt);
-});
-
-document.getElementById("toggleSpin").onclick = (e) => {
-	spin = !spin;
-	e.target.classList.toggle('active', !spin);
+document.getElementById("toggleAudio").onclick=(e)=>{
+  audioEnabled=!audioEnabled;
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  e.target.textContent=audioEnabled?"Audio ON":"Audio OFF";
+  e.target.classList.toggle('active',audioEnabled);
 };
 
-document.getElementById("toggleAudio").onclick = (e) => {
-	audioEnabled = !audioEnabled;
-	if (audioCtx.state === 'suspended') audioCtx.resume();
-	e.target.textContent = audioEnabled ? "Audio ON" : "Audio OFF";
-	e.target.classList.toggle('active', audioEnabled);
+// MIDI ON/OFF button
+document.getElementById("toggleMIDI").onclick=(e)=>{
+  midiEnabled=!midiEnabled;
+  e.target.textContent=midiEnabled?"MIDI ON":"MIDI OFF";
+  e.target.classList.toggle('active',midiEnabled);
 };
 
-for (let i = 0; i < 16; i++) {
-	const opt = document.createElement("option");
-	opt.value = i; opt.textContent = i + 1;
-	document.getElementById("channelSelect").appendChild(opt);
-}
+// Channel select
+const channelSelect=document.getElementById("channelSelect");
+for(let i=0;i<16;i++){ const opt=document.createElement("option"); opt.value=i; opt.textContent=i+1; channelSelect.appendChild(opt);}
+channel=parseInt(channelSelect.value,10);
+channelSelect.onchange=()=>channel=parseInt(channelSelect.value,10);
 
-window.addEventListener('resize', resize);
-resize();
-initRings();
-setupMIDI();
-draw();
+// Program (Instrument) select sends Program Change
+const programSelect=document.getElementById("programSelect");
+programSelect.onchange=()=>{
+  if(midiEnabled && midiOut){
+    midiOut.send([0xC0+channel,parseInt(programSelect.value,10)]);
+  }
+};
+
+window.addEventListener('resize',resize);
+resize(); initRings(); setupMIDI(); draw();
 </script>
 </body>
 </html>
